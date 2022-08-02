@@ -58,40 +58,44 @@ def pt_query(value, transform):
     return api_result
 
 def date_convert(date, type): # Normalize the dates coming in from the various sources
-    date_list = []
-    if type == "PT": # PassiveTotal date format
-        if date == "None":
-            date = ['1970', '1', '1']
-        else:
-            date = (date.split(" ")[0]).split("-")
-    if type == "user": # Dates supplied via CLI or Maltego
+    if type == "PT":
+        date = (
+            ['1970', '1', '1']
+            if date == "None"
+            else (date.split(" ")[0]).split("-")
+        )
+
+    elif type == "user":
         date = date.split("-")
-    for i in date:
-        date_list.append(int(i))
+    date_list = [int(i) for i in date]
     return datetime.date(date_list[0], date_list[1], date_list[2])
 
 def build_ptlist(api_result): # Written for just PT at the moment, will need to rework for other APIs
-    record_list = {}
-    for record in api_result['results']:
-        record_list[record['recordHash']] = [record['resolve'], record['firstSeen'], record['lastSeen']]
-    return record_list
+    return {
+        record['recordHash']: [
+            record['resolve'],
+            record['firstSeen'],
+            record['lastSeen'],
+        ]
+        for record in api_result['results']
+    }
 
 def build_node(value, type, number):
     node_body = '<node id="n' + str(number) + '">'
     node_body += """
 <data key="d3">
 <mtg:MaltegoEntity xmlns:mtg="http://maltego.paterva.com/xml/mtgx" id="""
-    id_value = "malnode" + str(number)
-    if type == "ip":
-        node_body += '"' + id_value + '" type="maltego.IPv4Address">'
-        node_body += """
-<mtg:Properties>
-<mtg:Property displayName="IP Address" hidden="false" name="ipv4-address" nullable="true" readonly="false" type="string">"""
+    id_value = f"malnode{str(number)}"
     if type == "domain":
         node_body += '"' + id_value + '" type="maltego.Domain">'
         node_body += """
 <mtg:Properties>
 <mtg:Property displayName="Domain Name" hidden="false" name="fqdn" nullable="true" readonly="false" type="string">"""
+    elif type == "ip":
+        node_body += '"' + id_value + '" type="maltego.IPv4Address">'
+        node_body += """
+<mtg:Properties>
+<mtg:Property displayName="IP Address" hidden="false" name="ipv4-address" nullable="true" readonly="false" type="string">"""
     node_body += """
   <mtg:Value>""" + value + """</mtg:Value>"""
     node_body += """</mtg:Property>
@@ -256,42 +260,40 @@ def api_query(value, target_start, target_end, recursive, api, transform):
     return final_list, type
 
 def build_graph(final_list, filename):
-    out_file = open('Graphs/Graph1.graphml', 'w')
-    # Start building graph
-    node_count = 0
-    node_track = {}
-    # Build necessary graph_header
-    out_file.write(graph_header)
-    # Build IP nodes
-    for ip_entry in final_list:
-        out_file.write(build_node(ip_entry, "ip", node_count))
-        node_track["n" + str(node_count)] = ip_entry
-        node_count += 1
-    # Build Domain nodes
-    domain_list = []
-    for ip_entry in final_list:
-        for domain in final_list[ip_entry]:
-            domain_list.append(domain)
-    domain_list = list(set(domain_list))
-    for domain_entry in domain_list:
-        out_file.write(build_node(domain_entry, "domain", node_count))
-        node_track["n" + str(node_count)] = domain_entry
-        node_count += 1
-    # Build Edge links
-    edge_count = 0
-    for ip_entry in final_list: # Iterate through each IP
-        for list_key, list_value in node_track.iteritems(): # Find node value for IP
-            if list_value == ip_entry:
-                src_node = list_key # Assign it to src_node for edge link
-        for domain_entry in final_list[ip_entry]: # Find node value for domain
-            for list_key, list_value in node_track.iteritems():
-                if list_value == domain_entry:
-                    dst_node = list_key # Assign it to dst_node for edge link
-                    out_file.write(build_edge(src_node, dst_node, edge_count))
-                    edge_count += 1
-    # Build necessary graph footer
-    out_file.write(graph_footer)
-    out_file.close()
+    with open('Graphs/Graph1.graphml', 'w') as out_file:
+        # Start building graph
+        node_count = 0
+        node_track = {}
+        # Build necessary graph_header
+        out_file.write(graph_header)
+            # Build IP nodes
+        for ip_entry in final_list:
+            out_file.write(build_node(ip_entry, "ip", node_count))
+            node_track[f"n{str(node_count)}"] = ip_entry
+            node_count += 1
+        # Build Domain nodes
+        domain_list = []
+        for ip_entry in final_list:
+            domain_list.extend(iter(final_list[ip_entry]))
+        domain_list = list(set(domain_list))
+        for domain_entry in domain_list:
+            out_file.write(build_node(domain_entry, "domain", node_count))
+            node_track[f"n{str(node_count)}"] = domain_entry
+            node_count += 1
+        # Build Edge links
+        edge_count = 0
+        for ip_entry in final_list: # Iterate through each IP
+            for list_key, list_value in node_track.iteritems(): # Find node value for IP
+                if list_value == ip_entry:
+                    src_node = list_key # Assign it to src_node for edge link
+            for domain_entry in final_list[ip_entry]: # Find node value for domain
+                for list_key, list_value in node_track.iteritems():
+                    if list_value == domain_entry:
+                        dst_node = list_key # Assign it to dst_node for edge link
+                        out_file.write(build_edge(src_node, dst_node, edge_count))
+                        edge_count += 1
+        # Build necessary graph footer
+        out_file.write(graph_footer)
 
 def zip_file(filename): # Builds the MTGX file by zipping the files in the directory up with the new Graph xml file
     zip_out = zipfile.ZipFile(filename, 'w')
@@ -304,19 +306,18 @@ def zip_file(filename): # Builds the MTGX file by zipping the files in the direc
     zip_out.close()
 
 def build_maltego(final_list, type, start_date, end_date): # Sends XML data to STDOUT that Maltego will catch, also ensures dates are returned for machines to keep the filter
-    if type == "ip":
-        for ip_entry in final_list:
+    for ip_entry in final_list:
+        if type == "domain":
+            node = maltrans.addEntity("maltego.IPv4Address", ip_entry)
+            node.setType("maltego.IPv4Address")
+            node.addAdditionalFields("After", "Display Value", True, start_date)
+            node.addAdditionalFields("Before", "Display Value", True, end_date)
+        elif type == "ip":
             for domain_entry in final_list[ip_entry]:
                 node = maltrans.addEntity("maltego.Domain", domain_entry)
                 node.setType("maltego.Domain")
                 node.addAdditionalFields("After", "Display Value", True, start_date)
                 node.addAdditionalFields("Before", "Display Value", True, end_date)
-    if type == "domain":
-        for ip_entry in final_list:
-            node = maltrans.addEntity("maltego.IPv4Address", ip_entry)
-            node.setType("maltego.IPv4Address")
-            node.addAdditionalFields("After", "Display Value", True, start_date)
-            node.addAdditionalFields("Before", "Display Value", True, end_date)
 
 def main():
     parser = argparse.ArgumentParser(description="Jumpstart Maltego graph of C2 infrastructure off domain or IP.", epilog="spidermal.py -l paloaltonetworks.com -s 2014-09-12 -e 2015-12-1 -r 2 -o pan.mgtx -a PT")

@@ -217,11 +217,7 @@ def phase1_unpack_v2decode(ADD_VALUE, XOR_VALUE_1, XOR_VALUE_2, LENGTH_VALUE, EN
 
         i = ord(i) + ADD_VALUE
 
-        if count % 2 == 0:
-            i = i ^ XOR_VALUE_1
-        else:
-            i = i ^ XOR_VALUE_2
-
+        i = i ^ XOR_VALUE_1 if count % 2 == 0 else i ^ XOR_VALUE_2
         try:
             mu += chr(i)
         except:
@@ -275,14 +271,11 @@ def phase1_unpack_variant3(ENC_PAYLOAD):
 
 def phase1_unpack_v3decode(XOR_VALUE_1, LENGTH_VALUE, ENC_PAYLOAD):
 
-    mu = ''
-
     l = len(XOR_VALUE_1)
-    for i in range(0, len(ENC_PAYLOAD[10:LENGTH_VALUE])):
-
-        mu += chr(ord(ENC_PAYLOAD[10:LENGTH_VALUE][i]) ^ ord(XOR_VALUE_1[i % l]))
-
-    return mu
+    return ''.join(
+        chr(ord(ENC_PAYLOAD[10:LENGTH_VALUE][i]) ^ ord(XOR_VALUE_1[i % l]))
+        for i in range(len(ENC_PAYLOAD[10:LENGTH_VALUE]))
+    )
 
 def phase1_unpack_variant4(ENC_PAYLOAD):
     # Try version 4
@@ -339,19 +332,17 @@ def phase1_unpack_variant4(ENC_PAYLOAD):
 def phase1_unpack_v4decode(XOR_VALUE_1, XOR_VALUE_2, LENGTH_VALUE, ENC_PAYLOAD):
 
     mu = ''
-    count = 0
-
     # 85d2ba3f12877bf7e531ec1970909f2ea20f55ba17d27f4a5b65e8e8dc493909
     # Later variants began 2 bytes in after the usual payload start
     # This will try to determine the start position by expected B64 start
     start_value = 0
-    for i in range(0,10):
+    for i in range(10):
 
         if chr(ord(ENC_PAYLOAD[10+i]) ^ ord(XOR_VALUE_1[0])) == "T":
 
             start_value = i
 
-    for i in range(10 + start_value, len(ENC_PAYLOAD[10 + start_value:LENGTH_VALUE]), 4):
+    for count, i in enumerate(range(10 + start_value, len(ENC_PAYLOAD[10 + start_value:LENGTH_VALUE]), 4)):
 
         if count % 2 == 0:
             l = len(XOR_VALUE_1)
@@ -362,8 +353,6 @@ def phase1_unpack_v4decode(XOR_VALUE_1, XOR_VALUE_2, LENGTH_VALUE, ENC_PAYLOAD):
             l = len(XOR_VALUE_2)
             for index,value in enumerate(range(i, i+4)):
                 mu += chr(ord(ENC_PAYLOAD[value]) ^ ord(XOR_VALUE_2[index]))
-
-        count += 1
 
     return mu
 
@@ -513,23 +502,28 @@ def phase2_unpack(XOR_VALUE, FILE_CONTENT):
 
     MAGIC_OFFSET = re.search(XOR_VALUE, FILE_CONTENT)
 
-    if MAGIC_OFFSET == None:
+    if MAGIC_OFFSET is None:
         return
-    else:
-        try:
+    try:
             # Identifies start of encrypted binary
-            MAGIC_OFFSET = list([x.start() for x in re.finditer(XOR_VALUE, FILE_CONTENT)])[1] - 30
-            MAGIC_BASE = re.search(XOR_VALUE, FILE_CONTENT).start()
-            MAGIC_COUNT = 1
+        MAGIC_OFFSET = [
+            x.start() for x in re.finditer(XOR_VALUE, FILE_CONTENT)
+        ][1] - 30
+
+        MAGIC_BASE = re.search(XOR_VALUE, FILE_CONTENT).start()
+        MAGIC_COUNT = 1
             # 001a4073d1cdefeb67a813207fde44c6430323eac1faf94ab05649b7e39b9f43_S1.exe
             # Some samples have the decrypt key repeated in the .rdata section
-            while MAGIC_OFFSET - MAGIC_BASE < 1000:
-                MAGIC_OFFSET = list([x.start() for x in re.finditer(XOR_VALUE, FILE_CONTENT)])[MAGIC_COUNT] - 30
-                MAGIC_COUNT += 1
-        except:
-            return ""
-            #print "\t[!] Encrypted payload not found! Shutting down"
-            #sys.exit(1)
+        while MAGIC_OFFSET - MAGIC_BASE < 1000:
+            MAGIC_OFFSET = [
+                x.start() for x in re.finditer(XOR_VALUE, FILE_CONTENT)
+            ][MAGIC_COUNT] - 30
+
+            MAGIC_COUNT += 1
+    except:
+        return ""
+        #print "\t[!] Encrypted payload not found! Shutting down"
+        #sys.exit(1)
     ENC_PAYLOAD = FILE_CONTENT[MAGIC_OFFSET:MAGIC_OFFSET + 20480]
 
     # Build final code to emulate

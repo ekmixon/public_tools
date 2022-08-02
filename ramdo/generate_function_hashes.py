@@ -16,11 +16,7 @@ def get_functions(dll_path):
 	if ((not hasattr(pe, 'DIRECTORY_ENTRY_EXPORT')) or (pe.DIRECTORY_ENTRY_EXPORT is None)):
 		return []
 	else:
-		expname = []
-		for exp in pe.DIRECTORY_ENTRY_EXPORT.symbols:
-			if exp.name:
-				expname.append(exp.name)
-		return expname
+		return [exp.name for exp in pe.DIRECTORY_ENTRY_EXPORT.symbols if exp.name]
 
 
 win_path = os.environ['WINDIR']
@@ -40,7 +36,7 @@ f.write("enum hashed_functions {\n")
 out = []
 for k,v in data.iteritems():
 	if k[0] == "_":
-		k = "j_"+k
+		k = f"j_{k}"
 	out.append("\n\t%s = 0x%x" % (k, v))
 f.write(",".join(out))
 f.write("\n};")

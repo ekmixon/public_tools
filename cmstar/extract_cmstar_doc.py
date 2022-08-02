@@ -17,7 +17,7 @@ def decrypt_xor(data, key, key_offset):
 	seed = ord(key)
 	for d in data:
 		ord_d = ord(d)
-		if ord_d != 0 and ord_d != seed:
+		if ord_d not in [0, seed]:
 			nvalue = ord_d ^ seed
 			seed = (seed + key_offset) % 0x100
 			output += chr(nvalue)

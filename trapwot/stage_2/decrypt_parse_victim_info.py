@@ -61,7 +61,7 @@ def parse_victim_info(data):
 		pos += 1
 		size = unpack("H", data[pos:(pos+2)])[0]
 		pos += 2
-		d = unpack(str(size)+"s", data[pos:(pos+size)])[0]
+		d = unpack(f"{str(size)}s", data[pos:(pos+size)])[0]
 		if int(identifier) == 21:
 			d = "0x" + str(unpack("I", d)[0])
 		elif int(identifier) == 19:
@@ -71,9 +71,9 @@ def parse_victim_info(data):
 		pos += size
 		if identifier in ENUMS:
 			identifier = ENUMS[identifier]
-		print "Identifier : %s" % identifier
-		print "Size       : %d" % size
-		print "Data       :", repr(d)
+		identifier = str(unpack("B", data[pos])[0])
+		identifier = str(unpack("B", data[pos])[0])
+		identifier = str(unpack("B", data[pos])[0])
 		print
 
 if __name__ == '__main__':

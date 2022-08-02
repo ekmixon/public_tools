@@ -2,12 +2,7 @@ begin_position = 0x100194D0 # This value must be changed
 begin_position_copy = begin_position
 
 def decrypt(data, key):
-	out = ""
-	c = 0
-	for d in data:
-		out += chr((c ^ key ^ ord(d)) & 0xFF)
-		c+=1
-	return out
+	return "".join(chr((c ^ key ^ ord(d)) & 0xFF) for c, d in enumerate(data))
 
 def find_function_arg(addr):
 	while True:

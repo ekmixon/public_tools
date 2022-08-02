@@ -10,28 +10,13 @@ Author: Josh Grunzweig
 ''' 
 
 def decode1(data):
-	out = ""
-	c = 0
-	for d in data:
-		out += chr(ord(d) - c - 10)
-		c += 1
-	return out
+	return "".join(chr(ord(d) - c - 10) for c, d in enumerate(data))
 
 def decode2(data):
-	out = ""
-	c = 0
-	for d in data:
-		out += chr(ord(d) - c - 3)
-		c += 1
-	return out
+	return "".join(chr(ord(d) - c - 3) for c, d in enumerate(data))
 
 def decode3(data):
-	out = ""
-	c = 0
-	for d in data:
-		out += chr(ord(d) - c - 8)
-		c += 1
-	return out
+	return "".join(chr(ord(d) - c - 8) for c, d in enumerate(data))
 
 o = open(sys.argv[1], 'rb')
 data = o.read()

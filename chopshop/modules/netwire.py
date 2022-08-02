@@ -79,7 +79,7 @@ def encrypt( raw, key, iv ):
     for i in xrange(0, len(text) / BS):
         lower_bound = i * 16
         upper_bound = (i+1) * 16
-        
+
         tmp = AES.new(key, AES.MODE_OFB, tmp_iv).decrypt( text[lower_bound:upper_bound] )
         tmp_iv = tmp
         result += tmp
@@ -106,7 +106,7 @@ def decrypt( raw, key, iv ):
     for i in xrange(0, len(ciphertext) / BS):
         lower_bound = i * 16
         upper_bound = (i+1) * 16
-        
+
         tmp = AES.new(key, AES.MODE_OFB, tmp_iv).decrypt( ciphertext[lower_bound:upper_bound] )
         tmp_iv = ciphertext[lower_bound:upper_bound]
         result += tmp
@@ -125,15 +125,15 @@ def command_conversion(dest, command, payload, command_list):
     
     """
     decoded_text = ''
-    
+
     json_commands = json.loads(command_list)
     command_string = binascii.hexlify(command).upper()
-    
+
     if json_commands.has_key(command_string):
         decoded_text = json_commands[command_string]
     else:
         decoded_text = ''
-    
+
     return decoded_text, payload
 
 
@@ -147,15 +147,14 @@ def decode_command( dest, command, payload, command_list):
     
     """
     decoded_text, payload = command_conversion(dest, command, payload, command_list)
-    
+
     if (dest == 'server'):
         chop.tsprnt('client -> server')
-        chop.tsprnt('Command: %s => %s' % (binascii.hexlify(command), decoded_text))
-        chop.tsprnt('Payload: %r \n' % ( payload ))
     else:
         chop.tsprnt('server -> client')
-        chop.tsprnt('Command: %s => %s' % (binascii.hexlify(command), decoded_text))
-        chop.tsprnt('Payload: %r \n' % ( payload ))
+
+    chop.tsprnt(f'Command: {binascii.hexlify(command)} => {decoded_text}')
+    chop.tsprnt('Payload: %r \n' % ( payload ))
 
 
 def module_info():
@@ -163,7 +162,6 @@ def module_info():
 
 
 def init(module_data):
-    module_options = { 'proto': [{'tcp': ''}] }
     module_data['password'] = 'Password'
     module_data['commands'] = """
 {
@@ -245,83 +243,75 @@ def init(module_data):
     "80": "continuation of file download"
 }
 """
-    return module_options
+    return { 'proto': [{'tcp': ''}] }
 
 
 def handleStream(tcp):
-  chop.tsprnt('--------------------------------')
-  chop.tsprnt("addr: %s" %  str(tcp.addr))
-  chop.tsprnt("Server Count: %s" % tcp.server.count_new)
-  chop.tsprnt("Client Count: %s" % tcp.client.count_new)
-  chop.tsprnt("Server offset: %s" % tcp.server.offset)
-  chop.tsprnt("Client offset: %s" % tcp.client.offset)
-  chop.tsprnt('')
+    chop.tsprnt('--------------------------------')
+    chop.tsprnt(f"addr: {str(tcp.addr)}")
+    chop.tsprnt(f"Server Count: {tcp.server.count_new}")
+    chop.tsprnt(f"Client Count: {tcp.client.count_new}")
+    chop.tsprnt(f"Server offset: {tcp.server.offset}")
+    chop.tsprnt(f"Client offset: {tcp.client.offset}")
+    chop.tsprnt('')
 
-  if (tcp.client.count_new >= 5):
-    len_client = struct.unpack('<I', tcp.client.data[0:4])[0]
-    command_client = tcp.client.data[4]
+    if (tcp.client.count_new >= 5):
+        len_client = struct.unpack('<I', tcp.client.data[:4])[0]
+        command_client = tcp.client.data[4]
 
-    if tcp.client.data[4] == '\x05':
-      server_seed = tcp.client.data[5:37]
-      server_iv = tcp.client.data[37:53]
-      server_key = create_key(tcp.module_data['password'], server_seed)
+        if tcp.client.data[4] == '\x05':
+            server_seed = tcp.client.data[5:37]
+            server_iv = tcp.client.data[37:53]
+            server_key = create_key(tcp.module_data['password'], server_seed)
 
-      tcp.module_data['server_key'] = server_key
-      tcp.module_data['server_iv'] = server_iv
+            tcp.module_data['server_key'] = server_key
+            tcp.module_data['server_iv'] = server_iv
 
-      tcp.discard(tcp.client.count_new)
-      chop.tsprnt("Server Key Generated")
-      chop.tsprnt('')
-      return
+            tcp.discard(tcp.client.count_new)
+            chop.tsprnt("Server Key Generated")
+            chop.tsprnt('')
+        elif not(tcp.module_data.has_key('server_key')):
+            chop.tsprnt('Skipping')
+            tcp.discard(tcp.client.count_new)
+        else:
+            if (len_client == 1):
+              decode_command('server', command_client, '', tcp.module_data['commands'])
+              return
 
-    elif not(tcp.module_data.has_key('server_key')):
-      chop.tsprnt('Skipping')
-      tcp.discard(tcp.client.count_new)
-      return
-
-    else:
-      if (len_client == 1):
-        decode_command('server', command_client, '', tcp.module_data['commands'])
-        return
-      
-      tmp = decrypt(tcp.client.data[5:tcp.client.count_new], tcp.module_data['server_key'], tcp.module_data['client_iv'])
-      decode_command('server', command_client, tmp, tcp.module_data['commands'])
-      return
-
-  if (tcp.server.count_new >= 5):
-    len_server = struct.unpack('<I', tcp.server.data[0:4])[0]
-    command_server = tcp.server.data[4]
-
-    if tcp.server.data[4] == '\x03':
-      client_seed = tcp.server.data[5:37]
-      client_iv = tcp.server.data[37:53]
-      client_key = create_key(tcp.module_data['password'], client_seed)
-
-      tcp.module_data['client_key'] = client_key
-      tcp.module_data['client_iv'] = client_iv
-
-      tcp.discard(tcp.server.count_new)
-      chop.tsprnt('Client Key Generated')
-      chop.tsprnt('')
-      return
-
-    elif not(tcp.module_data.has_key('client_key')):
-      chop.tsprnt('Skipping')
-      tcp.discard(tcp.server.count_new)
-      return
-
-    else:
-      if (len_server == 1):
-        decode_command('server', command_server, '', tcp.module_data['commands'])
+            tmp = decrypt(tcp.client.data[5:tcp.client.count_new], tcp.module_data['server_key'], tcp.module_data['client_iv'])
+            decode_command('server', command_client, tmp, tcp.module_data['commands'])
         return
 
-      tmp = decrypt(tcp.server.data[5:tcp.server.count_new], tcp.module_data['client_key'], tcp.module_data['client_iv'])
-      decode_command('server', command_server, tmp, tcp.module_data['commands'])
+    if (tcp.server.count_new >= 5):
+        len_server = struct.unpack('<I', tcp.server.data[:4])[0]
+        command_server = tcp.server.data[4]
 
-      tcp.discard(tcp.server.count_new)
-      return
+        if tcp.server.data[4] == '\x03':
+            client_seed = tcp.server.data[5:37]
+            client_iv = tcp.server.data[37:53]
+            client_key = create_key(tcp.module_data['password'], client_seed)
 
-  return
+            tcp.module_data['client_key'] = client_key
+            tcp.module_data['client_iv'] = client_iv
+
+            tcp.discard(tcp.server.count_new)
+            chop.tsprnt('Client Key Generated')
+            chop.tsprnt('')
+        elif not(tcp.module_data.has_key('client_key')):
+            chop.tsprnt('Skipping')
+            tcp.discard(tcp.server.count_new)
+        else:
+            if (len_server == 1):
+              decode_command('server', command_server, '', tcp.module_data['commands'])
+              return
+
+            tmp = decrypt(tcp.server.data[5:tcp.server.count_new], tcp.module_data['client_key'], tcp.module_data['client_iv'])
+            decode_command('server', command_server, tmp, tcp.module_data['commands'])
+
+            tcp.discard(tcp.server.count_new)
+        return
+
+    return
 
 
 def shutdown(module_data):

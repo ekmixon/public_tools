@@ -3,17 +3,12 @@ sys.path.append('/usr/local/lib/python2.7/site-packages')
 import pefile
 
 def extract_exe(name, begin, size):
-	buff = ""
-	for c in range(0, size):
-		buff += chr(Byte(begin+c))
-	f = open(name, 'wb')
-	f.write(buff)
-	f.close()
+	buff = "".join(chr(Byte(begin+c)) for c in range(size))
+	with open(name, 'wb') as f:
+		f.write(buff)
 
 def calculate_exe_size(begin):
-	buff = ""
-	for c in range(0, 1024):
-		buff += chr(Byte(begin+c))
+	buff = "".join(chr(Byte(begin+c)) for c in range(1024))
 	pe = pefile.PE(data=buff)
 	total_size = 0
 	# Add total size of headers

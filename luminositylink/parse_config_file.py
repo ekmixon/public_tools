@@ -22,7 +22,7 @@ def decrypt_data(data, key_string):
 	m = hashlib.md5()
 	m.update(key_string)
 	md5 = m.digest()
-	key = md5[0:15]+md5+"\x00"
+	key = md5[:15] + md5 + "\x00"
 	mode = AES.MODE_ECB
 	iv = '\x00' * 16
 	e = AES.new(key, mode, iv)
@@ -52,22 +52,18 @@ def parse_settings(string):
 		'h' : "Hide File and Directories",
 		'b' : "Backup Startup"
 	}
-	results = []
-	for char in string:
-		if char in settings:
-			results.append(settings[char])
-	return results
+	return [settings[char] for char in string if char in settings]
 
 
 def test_decrypted_data(data):
-	if "RDP Wrapper Library configuration" not in data:
-		if "<?xml version=" not in data:
-			if len(data.split("|")) > 5:
-				c = 0
-				for x in data:
-					if x not in string.printable: c+=1
-				if c < 30:
-					return True
+	if (
+		"RDP Wrapper Library configuration" not in data
+		and "<?xml version=" not in data
+		and len(data.split("|")) > 5
+	):
+		c = sum(x not in string.printable for x in data)
+		if c < 30:
+			return True
 	return False
 
 
@@ -122,28 +118,25 @@ Settings:
 
 
 def feb_config(t, k, s):
-	results = {}
-	results["sha256"] = s
-	results["domain_ip"] = t[0]
-	results["port"] = t[1]
-	results["backup_dns"] = t[2]
-	results["filename"] = t[3]
-	results["startup_name"] = t[4]
-	results["folder_name"] = "N/A"
-	results["data_directory_name"] = "N/A"
-	results["backup_startup_exe"] =  "N/A"
-	results["mutex"] = t[5]
-	results["build_id"] = t[7]
-	results["settings"] = t[6]
-	results["encryption_key"] = k
-	return results
+	return {
+		"sha256": s,
+		"domain_ip": t[0],
+		"port": t[1],
+		"backup_dns": t[2],
+		"filename": t[3],
+		"startup_name": t[4],
+		"folder_name": "N/A",
+		"data_directory_name": "N/A",
+		"backup_startup_exe": "N/A",
+		"mutex": t[5],
+		"build_id": t[7],
+		"settings": t[6],
+		"encryption_key": k,
+	}
 
 
 def june_config(t, k, s):
-	results = {}
-	results["sha256"] = s
-	results["domain_ip"] = t[0]
-	results["port"] = t[1]
+	results = {"sha256": s, "domain_ip": t[0], "port": t[1]}
 	backup_dns = t[2]
 	if backup_dns == "D": backup_dns = "Disabled"
 	results["backup_dns"] = backup_dns
@@ -162,10 +155,8 @@ def june_config(t, k, s):
 def main():
 	filename = sys.argv[1]
 
-	f = open(filename, 'rb')
-	fd = f.read()
-	f.close()
-
+	with open(filename, 'rb') as f:
+		fd = f.read()
 	sha256 = sha256_file(filename)
 
 	for data in re.findall("([ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789\+\/\=]{50,})", fd):

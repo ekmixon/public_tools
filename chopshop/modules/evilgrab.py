@@ -44,14 +44,14 @@ def command_conversion(command, payload, command_list):
         payload: hex string of the packet payload data
     """
     decoded_text = ''
-    
+
     command_string = binascii.hexlify(command).lower()
-    
+
     if command_list.has_key(command_string):
         decoded_text = command_list[command_string]
     else:
         decoded_text = ''
-    
+
     return decoded_text, payload
 
 
@@ -64,13 +64,13 @@ def decode_command( dest, command, payload, command_list):
         payload: hex string of the packet payload data
     
     """
-    
+
     if (dest == 'server'):
 
         decoded_text, payload = command_conversion(command, payload, command_list)
         chop.tsprnt('server -> client')
         if decoded_text:
-            chop.tsprnt('EvilGrab Command: %s => %s' % (binascii.hexlify(command), decoded_text))
+            chop.tsprnt(f'EvilGrab Command: {binascii.hexlify(command)} => {decoded_text}')
             if payload:
                 chop.tsprnt('EvilGrab Command Payload:')
                 if len(payload) > 32:
@@ -85,7 +85,7 @@ def decode_command( dest, command, payload, command_list):
     elif dest == 'client':
         decoded_text, payload = command_conversion(command, payload, command_list)
         chop.tsprnt('client -> server')
-        chop.tsprnt('Exfil Type: %s => %s' % (binascii.hexlify(command), decoded_text))
+        chop.tsprnt(f'Exfil Type: {binascii.hexlify(command)} => {decoded_text}')
         ## lets check out the initial system data sent
         #chop.tsprnt("%s" % binascii.hexlify(command).lower())
         if binascii.hexlify(command).lower() == "a0" and payload:
@@ -201,58 +201,55 @@ def init(module_data):
     return module_options
 
 def handleStream(tcp):
-  chop.tsprnt('')
-  chop.tsprnt('--------------------------------')
+    chop.tsprnt('')
+    chop.tsprnt('--------------------------------')
 
-  if tcp.client.count_new >= 5:
-    chop.tsprnt("%s:%d -> %s:%d" % (tcp.addr[1][0],tcp.addr[1][1],tcp.addr[0][0],tcp.addr[0][1]))
+    if tcp.client.count_new >= 5:
+        chop.tsprnt("%s:%d -> %s:%d" % (tcp.addr[1][0],tcp.addr[1][1],tcp.addr[0][0],tcp.addr[0][1]))
 
-    len_client = struct.unpack('<I', tcp.client.data[0:4])[0]
-    if len_client > len(tcp.client.data):
-        if tcp.client.data.startswith("HTTP/1.1 301 Moved Permanently\r\nLocation:http://windowsupdate.microsoft.com/\r\nContent-Type: text/html\r\nConnection: Keep-Alive\r\n\r\n<h1>Bad Request (Invalid Verb)</h1>"):
-            chop.tsprnt("Server responded with anomalous HTTP 301 message that Evilgrab uses to determine legitimate Evilgrab C2")
+        len_client = struct.unpack('<I', tcp.client.data[:4])[0]
+        if len_client > len(tcp.client.data):
+            if tcp.client.data.startswith("HTTP/1.1 301 Moved Permanently\r\nLocation:http://windowsupdate.microsoft.com/\r\nContent-Type: text/html\r\nConnection: Keep-Alive\r\n\r\n<h1>Bad Request (Invalid Verb)</h1>"):
+                chop.tsprnt("Server responded with anomalous HTTP 301 message that Evilgrab uses to determine legitimate Evilgrab C2")
+            else:
+                chop.tsprnt("Server len of %d greater than data available %d. Returning as its not a command" % (len_client,len(tcp.client.data)))
             tcp.discard(tcp.client.count_new)
             return
-        else:
-            chop.tsprnt("Server len of %d greater than data available %d. Returning as its not a command" % (len_client,len(tcp.client.data)))
-            tcp.discard(tcp.client.count_new)
+        try:
+            ## Evilgrab can chain commands together in a session.
+            ## lets walk through the the commands
+            ## starting after the first one of course
+            c = 0
+            while c < tcp.client.count_new:
+                length = struct.unpack('<I', tcp.client.data[c:c+4])[0]
+                command = tcp.client.data[c+4]
+                payload = ""
+                if length > 1:
+                    payload = tcp.client.data[c+5:c+5+length-1]
+                chop.tsprnt("Server: len %x command %x" % (length,ord(command)))
+                decode_command('server', command, payload, tcp.module_data['commands'])
+                c += 4+length
+        except Exception as e:
+            chop.tsprnt(f"Could not parse additional commands: {e}")
+
+    elif tcp.server.count_new >= 5:
+        chop.tsprnt("%s:%d -> %s:%d" % (tcp.addr[0][0],tcp.addr[0][1],tcp.addr[1][0],tcp.addr[1][1]))
+        len_server = struct.unpack('<I', tcp.server.data[:4])[0]
+        if len_server > len(tcp.server.data):
+            chop.tsprnt("Client len of %x greater than data available %d. Returning as its not a command" % (len_server,len(tcp.server.data)))
+            tcp.discard(tcp.server.count_new)
             return
+        command_server = tcp.server.data[4]
+        payload_server = tcp.server.data[5:5+len_server-1]
+        #chop.tsprnt("Client: len %x command %x" % (len_server,ord(command_server)))
 
-    try:
-        ## Evilgrab can chain commands together in a session.
-        ## lets walk through the the commands
-        ## starting after the first one of course
-        c = 0
-        while c < tcp.client.count_new:
-            length = struct.unpack('<I', tcp.client.data[c:c+4])[0]
-            command = tcp.client.data[c+4]
-            payload = ""
-            if length > 1:
-                payload = tcp.client.data[c+5:c+5+length-1]
-            chop.tsprnt("Server: len %x command %x" % (length,ord(command)))
-            decode_command('server', command, payload, tcp.module_data['commands'])
-            c += 4+length
-    except Exception as e:
-        chop.tsprnt("Could not parse additional commands: %s" % e)
+        decode_command('client', command_server, payload_server, tcp.module_data['exfil_types'])
 
-  elif tcp.server.count_new >= 5:
-    chop.tsprnt("%s:%d -> %s:%d" % (tcp.addr[0][0],tcp.addr[0][1],tcp.addr[1][0],tcp.addr[1][1]))
-    len_server = struct.unpack('<I', tcp.server.data[0:4])[0]
-    if len_server > len(tcp.server.data):
-        chop.tsprnt("Client len of %x greater than data available %d. Returning as its not a command" % (len_server,len(tcp.server.data)))
-        tcp.discard(tcp.server.count_new)
+    else:
+        #tcp.discard(tcp.server.count_new)
         return
-    command_server = tcp.server.data[4]
-    payload_server = tcp.server.data[5:5+len_server-1]
-    #chop.tsprnt("Client: len %x command %x" % (len_server,ord(command_server)))
 
-    decode_command('client', command_server, payload_server, tcp.module_data['exfil_types'])
-
-  else:
-    #tcp.discard(tcp.server.count_new)
     return
-
-  return
 
 
 def shutdown(module_data):

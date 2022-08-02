@@ -86,23 +86,21 @@ class MaltegoTransform(object):
 	def parseArguments(self,argv):
 		if (argv[1] is not None):
 			self.value = argv[1];
-			
-		if (len(argv) > 2):
-			if (argv[2] is not None):
-				vars = argv[2].split('#');
-				for x in range(0,len(vars)):
-					vars_values = vars[x].split('=')
-					if (len(vars_values) == 2):
-						self.values[vars_values[0]] = vars_values[1];
+
+		if (len(argv) > 2) and (argv[2] is not None):
+			vars = argv[2].split('#');
+			for x in range(len(vars)):
+				vars_values = vars[x].split('=')
+				if (len(vars_values) == 2):
+					self.values[vars_values[0]] = vars_values[1];
 	
 	def getValue(self):
 		if (self.value is not None):
 			return self.value;
 	
 	def getVar(self,varName):
-		if (varName in self.values.keys()):
-			if (self.values[varName] is not None):
-				return self.values[varName];
+		if (varName in self.values.keys()) and (self.values[varName] is not None):
+			return self.values[varName];
 	
 	def addEntity(self,enType,enValue):
 		me = MaltegoEntity(enType,enValue);
@@ -154,10 +152,10 @@ class MaltegoTransform(object):
 		self.writeSTDERR("+");
 	
 	def progress(self,percent):
-		self.writeSTDERR("%" + str(percent));
+		self.writeSTDERR(f"%{str(percent)}");
 	
 	def debug(self,msg):
-		self.writeSTDERR("D:" + str(msg));
+		self.writeSTDERR(f"D:{str(msg)}");
 			
 
 
@@ -165,6 +163,6 @@ def sanitise(value):
 	replace_these = ["&",">","<"];
 	replace_with = ["&amp;","&gt;","&lt;"];
 	tempvalue = value;
-	for i in range(0,len(replace_these)):
+	for i in range(len(replace_these)):
 		tempvalue = tempvalue.replace(replace_these[i],replace_with[i]);
 	return tempvalue;

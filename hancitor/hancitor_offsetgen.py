@@ -10,17 +10,17 @@ Sample: B489CA02DCEA8DC7D5420908AD5D58F99A6FEF160721DCECFD512095F2163F7A
 '''
 
 def sbox1init():
-    return [x for x in range(0, 0x100)]
+    return list(range(0x100))
 
 def sbox2init():
-    return [x for x in range(0, 0x5C36)]
+    return list(range(0x5C36))
 
 def datainit():
-    return [x for x in range(0, 0x5C36)]
+    return list(range(0x5C36))
 
 def rc4ksa(sbox1, key):
     oldValue = 0x0
-    for counter in range(0, len(sbox1)):
+    for counter in range(len(sbox1)):
         addValue = key[counter % len(key)]
         fnlValue = (oldValue + addValue + sbox1[counter]) % 0x100
         sbox1[fnlValue], sbox1[counter] = sbox1[counter], sbox1[fnlValue]
@@ -33,7 +33,7 @@ def offsetGen(sbox1, sbox2):
     oldValue = 0x0
     for counter in range(len(sbox2), 0, -1):
         fnlValue = ""
-        for x in range(0, 4):
+        for _ in range(4):
             innerIdx = innerCount % len(sbox1)
             oldValue = (sbox1[innerIdx] + oldValue) % 0x100
             addValue = (sbox1[oldValue] + sbox1[innerIdx]) % 0x100

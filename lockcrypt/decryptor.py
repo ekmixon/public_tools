@@ -33,7 +33,7 @@ def decrypt(enc, key):
 
     # phase 2
     key_cyclic = grouper(itertools.cycle(key), 4)
-    for i in xrange(0, size&(~3), 4):
+    for _ in xrange(0, size&(~3), 4):
         k = "".join(key_cyclic.next())
         k = struct.unpack("<I", k)[0]
 
@@ -51,7 +51,7 @@ def decrypt(enc, key):
     plain.seek(size&(~0x3), os.SEEK_SET)
     key_cyclic = grouper(itertools.cycle(key), 4)
     key_cyclic = reversed(list(itertools.islice(key_cyclic, ((size&(~0x3))>>1))))
-    for i in xrange(0, size&(~0x3), 2):
+    for _ in xrange(0, size&(~0x3), 2):
         k = "".join(key_cyclic.next())
         k = struct.unpack("<I", k)[0]
 
@@ -115,7 +115,7 @@ def decrypt_file(key, enc_path, args):
         logging.error("[-] skipping file decryption")
         return
     else:
-        logging.info("[+] decrypted the filename to '{}'".format(fsencode(dec_filename)))
+        logging.info(f"[+] decrypted the filename to '{fsencode(dec_filename)}'")
 
     dec_path = os.path.join(dirname, dec_filename)
 
@@ -127,14 +127,14 @@ def decrypt_file(key, enc_path, args):
         try:
             os.chmod(fsencode(enc_path), stat.S_IWRITE)
         except OSError as e:
-            logging.error("[-] failed to set the file to writable: {}".format(e))
+            logging.error(f"[-] failed to set the file to writable: {e}")
             return
 
         try:
             os.rename(fsencode(enc_path), fsencode(dec_path))
             logging.info("[+] renamed to the original filename")
         except OSError as e:
-            logging.error("[-] failed to rename to the original file name: {}".format(e))
+            logging.error(f"[-] failed to rename to the original file name: {e}")
             return
 
         try:
@@ -152,7 +152,7 @@ def decrypt_file(key, enc_path, args):
 
             logging.info("[+] done!")
         except IOError as e:
-            logging.error("[-] failed an IO operation: {}. stopping decryption".format(e))
+            logging.error(f"[-] failed an IO operation: {e}. stopping decryption")
             return
     else:
         try:
@@ -179,7 +179,7 @@ def decrypt_file(key, enc_path, args):
 
             logging.info("[+] done!")
         except IOError as e:
-            logging.error("[-] failed an IO operation: {}. stopping decryption".format(e))
+            logging.error(f"[-] failed an IO operation: {e}. stopping decryption")
             return
 
         try:
@@ -195,14 +195,14 @@ def decrypt_file(key, enc_path, args):
                 os.unlink(fsencode(enc_path))
                 logging.info("[+] removed encrypted file")
             except OSError as e:
-                logging.error("[-] failed to remove the encrypted file: {}".format(e))
+                logging.error(f"[-] failed to remove the encrypted file: {e}")
 
 def remove_ransom_note(path, args):
     try:
         with open(path, "rb") as f:
             ransom_note = f.read(1024)
     except IOError as e:
-        logging.error("[-] failed to read the supposed ransom note file: {}".format(e))
+        logging.error(f"[-] failed to read the supposed ransom note file: {e}")
         return
 
     if any(snip in ransom_note for snip in RANSOM_NOTE_SNIPPETS):
@@ -211,7 +211,7 @@ def remove_ransom_note(path, args):
             os.unlink(fsencode(path))
             logging.info("[+] removed ransom note file")
         except OSError as e:
-            logging.error("[-] failed to remove the ransom note file: {}".format(e))
+            logging.error(f"[-] failed to remove the ransom note file: {e}")
     else:
         logging.error("[-] file does not contain any known ransom note snippets. skipping")
 
@@ -272,7 +272,7 @@ def parse_args():
     # verify the key length
     args.key.seek(0, os.SEEK_END)
     if args.key.tell() != 25000:
-        parser.error("the key file must be exactly {} bytes long".format(25000))
+        parser.error('the key file must be exactly 25000 bytes long')
     args.key.seek(0, os.SEEK_SET)
 
     return args

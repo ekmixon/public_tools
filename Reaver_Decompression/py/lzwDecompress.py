@@ -94,18 +94,13 @@ def Start(pargs,hlzw,data):
     regex = re.compile(CabCompPattern.decode('hex'))
     for match in regex.finditer(data):
         found = True
-        ExpandedFile=CabExtract(match,pargs,data)
-        if ExpandedFile:
+        if ExpandedFile := CabExtract(match, pargs, data):
             with open(ExpandedFile,"rb") as fp:
                 ExpandedData=fp.read()
                 DecompressRoutine(pargs,hlzw,ExpandedData)
             return True
     if not found:
-        result=DecompressRoutine(pargs,hlzw,data)
-        if result:
-            return True
-        else:
-            return False
+        return bool(result := DecompressRoutine(pargs,hlzw,data))
 
 def main():
     parser=argparse.ArgumentParser()
@@ -113,7 +108,7 @@ def main():
     parser.add_argument("-o", '--outfile', dest='out_file',help="Optional Output file name",required=False)
     results = parser.parse_args()
     if not results.out_file:
-        results.out_file=results.input_file + "_dec.txt"
+        results.out_file = f"{results.input_file}_dec.txt"
     lzwdll="LzwDecompress.dll"
     lzwdllpath = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + lzwdll
     if os.path.isfile(lzwdllpath):

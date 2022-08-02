@@ -58,25 +58,23 @@ Settings:
 
 
 def feb_config(t):
-	results = {}
-	results["domain_ip"] = t[0]
-	results["port"] = t[1]
-	results["backup_dns"] = t[2]
-	results["filename"] = t[3]
-	results["startup_name"] = t[4]
-	results["folder_name"] = "N/A"
-	results["data_directory_name"] = "N/A"
-	results["backup_startup_exe"] =  "N/A"
-	results["mutex"] = t[5]
-	results["build_id"] = t[7]
-	results["settings"] = t[6]
-	return results
+	return {
+		"domain_ip": t[0],
+		"port": t[1],
+		"backup_dns": t[2],
+		"filename": t[3],
+		"startup_name": t[4],
+		"folder_name": "N/A",
+		"data_directory_name": "N/A",
+		"backup_startup_exe": "N/A",
+		"mutex": t[5],
+		"build_id": t[7],
+		"settings": t[6],
+	}
 
 
 def june_config(t):
-	results = {}
-	results["domain_ip"] = t[0]
-	results["port"] = t[1]
+	results = {"domain_ip": t[0], "port": t[1]}
 	backup_dns = t[2]
 	if backup_dns == "D": backup_dns = "Disabled"
 	results["backup_dns"] = backup_dns

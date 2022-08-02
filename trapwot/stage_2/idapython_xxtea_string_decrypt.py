@@ -27,7 +27,7 @@ from binascii import *
 
 def raw_xxtea(v, n, k):
 	assert type(v) == type([])
-	assert type(k) == type([]) or type(k) == type(())
+	assert type(k) in [type([]), type(())]
 	assert type(n) == type(1)
 
 	def MX():
@@ -175,15 +175,13 @@ def d():
 	ea = here()
 	n_ea = ea
 	data = ""
-	while True:
-		if Byte(n_ea) == 0 and Byte(n_ea+1) == 0:
-			break
+	while not (Byte(n_ea) == 0 and Byte(n_ea + 1) == 0):
 		data += chr(Byte(n_ea))
 		n_ea += 1
 
-	print "[+] Data to decrypt:", repr(data)
+	ea = here()
 	key = 'a\xc3^\xa9\xe2\x8fN\xd4\xd4\xdbm\x1b\x9a>\x93\x08'
 	x = XXTEA(key)
 	decrypted_string = x.decrypt(data)
-	print "[+] Decrypted:", repr(decrypted_string)
+	ea = here()
 	MakeComm(ea, decrypted_string)

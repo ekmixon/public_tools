@@ -450,7 +450,6 @@ id_enum = idc.AddEnum(0, "carberpAPI", idaapi.hexflag());
 if id_enum != 0xffffffff:
 	for k,v in apis.iteritems():
 		idc.AddConstEx(id_enum, k, v, -1);
-	print "[*] Added Carberp API enumeration: carberpAPI"
 
 
 def get_all_enum_constants():
@@ -460,7 +459,7 @@ def get_all_enum_constants():
 	'''
 	constants = {}
 	all_enums = GetEnumQty()
-	for i in range(0, all_enums):
+	for i in range(all_enums):
 		en = GetnEnum(i)
 		first = GetFirstConst(en, -1)
 		v1 = GetConstEx(en, first, 0, -1)
@@ -522,11 +521,10 @@ def find_pattern(pattern, max_attempt=5):
 	'''
 	addr = MinEA()
 	results = []
-	for x in range(0, max_attempt):
+	for _ in range(max_attempt):
 		addr = idc.FindBinary(addr, SEARCH_DOWN, pattern)
-		if addr != idc.BADADDR:
-			if addr not in results:
-				results.append(addr)
+		if addr != idc.BADADDR and addr not in results:
+			results.append(addr)
 	return results
 
 
@@ -534,7 +532,7 @@ def find_next_call_address(ea, max_attempt=5):
 	'''
 	Attempt to find the next call instruction after a particular address.
 	'''
-	for x in range(0, max_attempt):
+	for _ in range(max_attempt):
 		if GetMnem(ea) == "call":
 			return GetOperandValue(ea,0)
 		ea = NextHead(ea)
@@ -546,11 +544,9 @@ def find_GetProcAddressEx():
 	Try and find an instance of 'push C8AC8026'. This is a way of identifying
 	the GetProcAddressEx() function within the binary.
 	'''
-	load_library = find_pattern('68 26 80 AC C8')
-	if load_library:
+	if load_library := find_pattern('68 26 80 AC C8'):
 		likely_function = find_next_call_address(load_library[0])
-		print '[+] GetProcAddressEx discovered at 0x%x' % likely_function
-		return likely_function
+		return find_next_call_address(load_library[0])
 	return None
 
 
@@ -559,11 +555,9 @@ def find_GetApiAddr():
 	Try and find an instance of 'push 1A212962'. This is a way of identifying
 	the GetApiAddr() function within the binary.
 	'''
-	load_library = find_pattern('68 62 29 21 1A')
-	if load_library:
+	if load_library := find_pattern('68 62 29 21 1A'):
 		likely_function = find_next_call_address(load_library[0])
-		print '[+] GetApiAddr discovered at 0x%x' % likely_function
-		return likely_function
+		return find_next_call_address(load_library[0])
 	return None
 	
 

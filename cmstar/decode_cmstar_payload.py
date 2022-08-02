@@ -34,7 +34,7 @@ output_buffer_len = len(remaining_fdata) >> 2 # Dividing by 4.
 
 def decodeCycle(dword, rounds, modvalue):
 	output = 1
-	for c in range(rounds):
+	for _ in range(rounds):
 		output = (output * dword) % modvalue
 	return output
 
@@ -44,6 +44,5 @@ for counter in range(output_buffer_len):
 	dword = unpack("<I", dwordraw)[0]
 	resulting_buffer += chr(decodeCycle(dword, v2, v3))
 
-fh = open(file+".exe", 'wb')
-fh.write(resulting_buffer)
-fh.close()
+with open(f"{file}.exe", 'wb') as fh:
+	fh.write(resulting_buffer)

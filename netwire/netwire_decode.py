@@ -81,7 +81,7 @@ def encrypt( raw, key, iv ):
     for i in xrange(0, len(text) / BS):
         lower_bound = i * 16
         upper_bound = (i+1) * 16
-        
+
         tmp = AES.new(key, AES.MODE_OFB, tmp_iv).decrypt( text[lower_bound:upper_bound] )
         tmp_iv = tmp
         result += tmp
@@ -108,7 +108,7 @@ def decrypt( raw, key, iv ):
     for i in xrange(0, len(ciphertext) / BS):
         lower_bound = i * 16
         upper_bound = (i+1) * 16
-        
+
         tmp = AES.new(key, AES.MODE_OFB, tmp_iv).decrypt( ciphertext[lower_bound:upper_bound] )
         tmp_iv = ciphertext[lower_bound:upper_bound]
         result += tmp
@@ -127,16 +127,16 @@ def command_conversion(dest, command, payload):
     
     """
     decoded_text = ''
-    
+
     json_data = open('./commands.json')
     json_commands = json.load(json_data)
     command_string = binascii.hexlify(command).upper()
-    
+
     if json_commands.has_key(command_string):
         decoded_text = json_commands[command_string]
     else:
         decoded_text = ''
-    
+
     return decoded_text, payload
 
 

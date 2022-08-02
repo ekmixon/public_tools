@@ -21,41 +21,36 @@ def get_macros(path):
 			vba_code = filter_vba(vba_code)
 			if vba_code.strip() != '':
 				parse_macro(vba_code)
-				fh = open("{}.vba".format(str(c)), 'wb')
-				fh.write(vba_code)
-				fh.close()
+				with open(f"{str(c)}.vba", 'wb') as fh:
+					fh.write(vba_code)
 				c += 1
 
 
 def decode(blacklist, string):
-	out = ""
-	for c in string:
-		if c not in blacklist:
-			out += c
-	return out
+	return "".join(c for c in string if c not in blacklist)
 
 
 def get_blacklist(macro_data):
 	blacklist = None
-	r = re.search("\"(\w+)\"\s+Like\s+", macro_data, flags=re.IGNORECASE)
-	if r:
+	if r := re.search("\"(\w+)\"\s+Like\s+", macro_data, flags=re.IGNORECASE):
 		print("[+] Found blacklist using Like method.")
-		blacklist = r.group(1)
+		blacklist = r[1]
 	else:
 		print("[-] Blacklist not found via Like method. Checking for InStrRev().")
-		r = re.search("\w+\s*\=\s*InStrRev\(\s*\"([^\"]+)\"", macro_data, flags=re.IGNORECASE)
-		if r:
-			blacklist = r.group(1)
+		if r := re.search(
+			"\w+\s*\=\s*InStrRev\(\s*\"([^\"]+)\"", macro_data, flags=re.IGNORECASE
+		):
+			blacklist = r[1]
 		else:
 			print("[-] Variable not found via InStrRev method (1).")
-			r = re.search("\w+\s*\=\s*InStrRev\(\s*(\S+)\s*,", macro_data, flags=re.IGNORECASE)
-			if r:			
+			if r := re.search(
+				"\w+\s*\=\s*InStrRev\(\s*(\S+)\s*,", macro_data, flags=re.IGNORECASE
+			):
 				print("[+] Variable found via InStrRev method (2).")
-				var_search = "{}\s*\=\s*\"([^\"]+)\"".format(r.group(1))
-				r2 = re.search(var_search, macro_data, flags=re.IGNORECASE)
-				if r2:
+				var_search = f'{r[1]}\s*\=\s*\"([^\"]+)\"'
+				if r2 := re.search(var_search, macro_data, flags=re.IGNORECASE):
 					print("[+] Blacklist found via InStrRev method (2).")
-					blacklist = r2.group(1)
+					blacklist = r2[1]
 				else:
 					print("[-] Blacklist not found via InStrRev method (2).")
 			else:
@@ -64,24 +59,18 @@ def get_blacklist(macro_data):
 
 		
 def parse_macro(macro_data):
-	blacklist = get_blacklist(macro_data)
-	if blacklist:	
-		print("[+] Blacklist string: {}".format(blacklist))
-		all_strings = re.findall("\"([^\"\n]+)\"", macro_data)
-		relevant_strings = []
-		for string in all_strings:
-			all_bl_chars = []
-			for c in string:
-				if c in blacklist:
-					all_bl_chars.append(c)
-			if (float(len(all_bl_chars)) / len(string)) > 0.50:
-				if string != blacklist:
-					relevant_strings.append(string)
-		c = 1
-		for string in relevant_strings:
-			print("[+] Segment #{}".format(c))
-			c+=1
-			print(decode(blacklist, string))
+	if not (blacklist := get_blacklist(macro_data)):
+		return
+	print(f"[+] Blacklist string: {blacklist}")
+	all_strings = re.findall("\"([^\"\n]+)\"", macro_data)
+	relevant_strings = []
+	for string in all_strings:
+		all_bl_chars = [c for c in string if c in blacklist]
+		if (float(len(all_bl_chars)) / len(string)) > 0.50 and string != blacklist:
+			relevant_strings.append(string)
+	for c, string in enumerate(relevant_strings, start=1):
+		print(f"[+] Segment #{c}")
+		print(decode(blacklist, string))
 
 
 get_macros(sys.argv[1])

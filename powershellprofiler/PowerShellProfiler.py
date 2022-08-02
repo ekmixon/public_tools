@@ -12,7 +12,7 @@ __date__ = "X"
 
 # The garbageList is used to prevent loops for functions that don't replace content but simply append to existing
 global garbageList
-garbageList = list()
+garbageList = []
 
 
 #####################
@@ -32,18 +32,19 @@ def stripASCII(contentData):
     """
     strippedMessage = str()
 
-    if type(contentData) == bytes:
+    for entry in contentData:
+        if type(contentData) == bytes:
 
-        for entry in contentData:
-            if (int(entry) == 9 or int(entry) == 10 or int(entry) == 13) or \
-                (int(entry) >= 32 and int(entry) <= 126):
+            if int(entry) in {9, 10, 13} or (
+                int(entry) >= 32 and int(entry) <= 126
+            ):
                 strippedMessage += chr(int(entry))
 
-    elif type(contentData) == str:
+        elif type(contentData) == str:
 
-        for entry in contentData:
-            if (ord(entry) == 9 or ord(entry) == 10 or ord(entry) == 13) or \
-                (ord(entry) >= 32 and ord(entry) <= 126):
+            if ord(entry) in {9, 10, 13} or (
+                ord(entry) >= 32 and ord(entry) <= 126
+            ):
                 strippedMessage += entry
 
     return strippedMessage.replace("\x00", "")
@@ -116,24 +117,22 @@ def scoreBehaviors(behaviorTags):
     }
 
     score = 0.0
-    behaviorData = list()
+    behaviorData = []
 
     for behavior in behaviorTags:
 
-        if "Known Malware:" in behavior:
-            behaviorData.append("%s: %s - %s" % (behavior.split(":")[0], behavior.split(":")[1], scoreValues[behavior.split(":")[0]]))
-            behavior = behavior.split(":")[0]
-        elif "Obfuscation:" in behavior:
-            behaviorData.append("%s: %s - %s" % (behavior.split(":")[0], behavior.split(":")[1], scoreValues[behavior.split(":")[0]]))
+        if "Known Malware:" in behavior or "Obfuscation:" in behavior:
+            behaviorData.append(
+                f'{behavior.split(":")[0]}: {behavior.split(":")[1]} - {scoreValues[behavior.split(":")[0]]}'
+            )
+
             behavior = behavior.split(":")[0]
         else:
-            behaviorData.append("%s - %s" % (behavior, scoreValues[behavior]))
+            behaviorData.append(f"{behavior} - {scoreValues[behavior]}")
 
         score += scoreValues[behavior]
 
-    if score < 0.0:
-        score = 0.0
-
+    score = max(score, 0.0)
     # These verdicts are arbitrary and can be adjusted as necessary.
     if score == 0 and behaviorTags == []:
         verdict = "Unknown"

@@ -2,7 +2,7 @@ import json
 
 def get_enum(constant):
   all_enums = GetEnumQty()
-  for i in range(0, all_enums):
+  for i in range(all_enums):
     enum_id = GetnEnum(i)
     enum_constant = GetFirstConst(enum_id, -1)
     name = GetConstName(GetConstEx(enum_id, enum_constant, 0, -1))
@@ -18,8 +18,7 @@ def get_enum(constant):
 
 def convert_offset_to_enum(addr):
   constant = GetOperandValue(addr, 0)
-  enum_data = get_enum(constant)
-  if enum_data:
+  if enum_data := get_enum(constant):
     name, enum_id = enum_data
     OpEnumEx(addr, 0, enum_id, 0)
     return True
@@ -54,11 +53,9 @@ def enum_for_xrefs(load_function_address, json_data, enumeration):
                     MakeName(operand_value, str("d_"+name))
 
 
-fh = open("output.json", 'rb')
-d = fh.read()
-json_data = json.loads(d)
-fh.close()
-
+with open("output.json", 'rb') as fh:
+  d = fh.read()
+  json_data = json.loads(d)
 # JSON objects don't allow using integers as dict keys. Little workaround for
 # this issue. 
 for k,v in json_data.iteritems():

@@ -11,13 +11,10 @@ import glob
 
 
 def xor_two_files(f1, f2):
-  out = ''
   r = len(f1)
   if len(f2) < r:
     r = len(f2)
-  for x in range(r):
-    out += chr(ord(f1[x]) ^ ord(f2[x]))
-  return out
+  return ''.join(chr(ord(f1[x]) ^ ord(f2[x])) for x in range(r))
 
 
 parser = OptionParser()
@@ -44,102 +41,92 @@ if not os.path.isdir(stream_directory):
 streams_0_5 = []
 
 for g in glob.glob(os.path.join(stream_directory, "*.stream.0_5")):
-  f = open(g, 'rb')
-  fd = f.read()
-  f.close()
+  with open(g, 'rb') as f:
+    fd = f.read()
   streams_0_5.append(fd)
 
-print("[+] Pulled {} streams 0-5 from output folder.".format(len(streams_0_5)))
+print(f"[+] Pulled {len(streams_0_5)} streams 0-5 from output folder.")
 
 streams_5_30 = []
 
 for g in glob.glob(os.path.join(stream_directory, "*.stream.5_30")):
-  f = open(g, 'rb')
-  fd = f.read()
-  f.close()
+  with open(g, 'rb') as f:
+    fd = f.read()
   streams_5_30.append(fd)
 
-print("[+] Pulled {} streams 5-30 from output folder.".format(len(streams_5_30)))
+print(f"[+] Pulled {len(streams_5_30)} streams 5-30 from output folder.")
 
 streams_30_100 = []
 
 for g in glob.glob(os.path.join(stream_directory, "*.stream.30_100")):
-  f = open(g, 'rb')
-  fd = f.read()
-  f.close()
+  with open(g, 'rb') as f:
+    fd = f.read()
   streams_30_100.append(fd)
 
-print("[+] Pulled {} streams 30-100 from output folder.".format(len(streams_30_100)))
+print(f"[+] Pulled {len(streams_30_100)} streams 30-100 from output folder.")
 
 streams_100_300 = []
 
 for g in glob.glob(os.path.join(stream_directory, "*.stream.100_300")):
-  f = open(g, 'rb')
-  fd = f.read()
-  f.close()
+  with open(g, 'rb') as f:
+    fd = f.read()
   streams_100_300.append(fd)
 
-print("[+] Pulled {} streams 100-300 from output folder.".format(len(streams_100_300)))
+print(f"[+] Pulled {len(streams_100_300)} streams 100-300 from output folder.")
 
 
 streams_300_700 = []
 
 for g in glob.glob(os.path.join(stream_directory, "*.stream.300_700")):
-  f = open(g, 'rb')
-  fd = f.read()
-  f.close()
+  with open(g, 'rb') as f:
+    fd = f.read()
   streams_300_700.append(fd)
 
-print("[+] Pulled {} streams 300-700 from output folder.".format(len(streams_300_700)))
+print(f"[+] Pulled {len(streams_300_700)} streams 300-700 from output folder.")
 
 
 streams_700_2000 = []
 
 for g in glob.glob(os.path.join(stream_directory, "*.stream.700_2000")):
-  f = open(g, 'rb')
-  fd = f.read()
-  f.close()
+  with open(g, 'rb') as f:
+    fd = f.read()
   streams_700_2000.append(fd)
 
-print("[+] Pulled {} streams 700-2000 from output folder.".format(len(streams_700_2000)))
+print(
+    f"[+] Pulled {len(streams_700_2000)} streams 700-2000 from output folder.")
 
 
 streams_2000_3000 = []
 
 for g in glob.glob(os.path.join(stream_directory, "*.stream.2000_3000")):
-  f = open(g, 'rb')
-  fd = f.read()
-  f.close()
+  with open(g, 'rb') as f:
+    fd = f.read()
   streams_2000_3000.append(fd)
 
-print("[+] Pulled {} streams 2000-3000 from output folder.".format(len(streams_2000_3000)))
+print(
+    f"[+] Pulled {len(streams_2000_3000)} streams 2000-3000 from output folder."
+)
 
 
 streams_3000_ = []
 
 for g in glob.glob(os.path.join(stream_directory, "*.stream.3000_")):
-  f = open(g, 'rb')
-  fd = f.read()
-  f.close()
+  with open(g, 'rb') as f:
+    fd = f.read()
   streams_3000_.append(fd)
 
-print("[+] Pulled {} streams 3000- from output folder.".format(len(streams_3000_)))
+print(f"[+] Pulled {len(streams_3000_)} streams 3000- from output folder.")
 
 
 def decrypt_file_with_stream(zxz_file, streams):
-  c = 0
   og_prefix = zxz_file.split(".")[-2]
-  for stream in streams:
-    nfile = "{}.{}.{}".format(zxz_file, str(c), og_prefix)
-    nfh = open(nfile, 'wb')
-    ofh = open(zxz_file, 'rb')
-    zxz_data = ofh.read()
-    ofh.close()
-
-    nfh.write(xor_two_files(zxz_data, stream))
-    nfh.close()
-    print("[+] Wrote {}".format(nfile))
-    c+=1
+  for c, stream in enumerate(streams):
+    nfile = f"{zxz_file}.{str(c)}.{og_prefix}"
+    with open(nfile, 'wb') as nfh:
+      with open(zxz_file, 'rb') as ofh:
+        zxz_data = ofh.read()
+      nfh.write(xor_two_files(zxz_data, stream))
+    print(f"[+] Wrote {nfile}")
 
 
 for root, dirs, files in os.walk(options.directory):
@@ -147,26 +134,24 @@ for root, dirs, files in os.walk(options.directory):
     if file.endswith(".zXz"):
       zxz_file = os.path.join(root, file)
       try:
-        fh = open(zxz_file, 'rb')
-        zxz_data = fh.read()
-        fh.close()
-        if len(zxz_data) > 0:
-          if zxz_data[0:4] != "\x00\x00\x00\x00":
-              if len(zxz_data) < (5*1024*1024):
-                decrypt_file_with_stream(zxz_file, streams_0_5)
-              elif len(zxz_data) < (30*1024*1024):
-                decrypt_file_with_stream(zxz_file, streams_5_30)
-              elif len(zxz_data) < (100*1024*1024):
-                decrypt_file_with_stream(zxz_file, streams_30_100)    
-              elif len(zxz_data) < (300*1024*1024):
-                decrypt_file_with_stream(zxz_file, streams_100_300)
-              elif len(zxz_data) < (700*1024*1024):
-                decrypt_file_with_stream(zxz_file, streams_300_700) 
-              elif len(zxz_data) < (2000*1024*1024):
-                decrypt_file_with_stream(zxz_file, streams_700_2000) 
-              elif len(zxz_data) < (3000*1024*1024):
-                idecrypt_file_with_stream(zxz_file, streams_2000_3000)  
-              else:
-                decrypt_file_with_stream(zxz_file, streams_3000_)   
+        with open(zxz_file, 'rb') as fh:
+          zxz_data = fh.read()
+        if len(zxz_data) > 0 and zxz_data[:4] != "\x00\x00\x00\x00":
+          if len(zxz_data) < (5*1024*1024):
+            decrypt_file_with_stream(zxz_file, streams_0_5)
+          elif len(zxz_data) < (30*1024*1024):
+            decrypt_file_with_stream(zxz_file, streams_5_30)
+          elif len(zxz_data) < (100*1024*1024):
+            decrypt_file_with_stream(zxz_file, streams_30_100)    
+          elif len(zxz_data) < (300*1024*1024):
+            decrypt_file_with_stream(zxz_file, streams_100_300)
+          elif len(zxz_data) < (700*1024*1024):
+            decrypt_file_with_stream(zxz_file, streams_300_700) 
+          elif len(zxz_data) < (2000*1024*1024):
+            decrypt_file_with_stream(zxz_file, streams_700_2000) 
+          elif len(zxz_data) < (3000*1024*1024):
+            idecrypt_file_with_stream(zxz_file, streams_2000_3000)  
+          else:
+            decrypt_file_with_stream(zxz_file, streams_3000_)
       except Exception as e:
         pass
